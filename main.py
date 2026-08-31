@@ -1,8 +1,8 @@
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
+from fluent_compiler.bundle import FluentBundle
 from fluentogram import FluentTranslator, TranslatorHub
-from fluentogram.ftl_cli import FluentBundle
 
 import config
 from database.connection import create_db_pool
@@ -20,13 +20,13 @@ def setup_i18n() -> TranslatorHub:
             FluentTranslator(
                 locale="ru",
                 translator=FluentBundle.from_files(
-                    "ru", filenames=["locales/ru/texts.ftl"]
+                    "ru-RU", filenames=["locales/ru/texts.ftl"]
                 ),
             ),
             FluentTranslator(
                 locale="en",
                 translator=FluentBundle.from_files(
-                    "en", filenames=["locales/en/texts.ftl"]
+                    "en-US", filenames=["locales/en/texts.ftl"]
                 ),
             ),
         ],
