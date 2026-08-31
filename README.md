@@ -111,7 +111,7 @@ Running via Docker Compose
 
 1.  Clone the repository:
 
-    git clone https://github.com/your-username/telegram-forwarding-bot.git
+    git clone https://github.com/egraich/forwardingbot.git
     cd telegram-forwarding-bot
 
 2.  Copy .env.example to .env and fill in your credentials:
