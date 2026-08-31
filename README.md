@@ -27,7 +27,6 @@ A multi-user, asynchronous Telegram bot designed to forward messages between gro
 ## Project Structure
 
 ```text
-.
 ├── .env.example            # Environment variables template
 ├── docker-compose.yml      # PostgreSQL container configuration
 ├── Dockerfile              # Bot application containerization
@@ -48,6 +47,7 @@ A multi-user, asynchronous Telegram bot designed to forward messages between gro
 └── middlewares/
     ├── db.py               # Database pool injection middleware
     └── i18n.py             # User locale detection middleware
+```
 
 Database Architecture
 
