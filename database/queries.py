@@ -7,24 +7,29 @@ async def add_user_and_create_draft(
 ) -> None:
     """Register a user and create a new forward draft, clearing existing unfinished drafts."""
     async with pool.acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO users (user_id, username) 
-            VALUES ($1, $2) 
-            ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username;
-            """,
-            user_id,
-            username,
-        )
-        await conn.execute(
-            """
-            DELETE FROM forwards 
-            WHERE owner_id = $1 AND status IN ('waiting_source', 'waiting_target');
-            
-            INSERT INTO forwards (owner_id, status) VALUES ($1, 'waiting_source');
-            """,
-            user_id,
-        )
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO users (user_id, username) 
+                VALUES ($1, $2) 
+                ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username;
+                """,
+                user_id,
+                username,
+            )
+            await conn.execute(
+                """
+                DELETE FROM forwards 
+                WHERE owner_id = $1 AND status IN ('waiting_source', 'waiting_target');
+                """,
+                user_id,
+            )
+            await conn.execute(
+                """
+                INSERT INTO forwards (owner_id, status) VALUES ($1, 'waiting_source');
+                """,
+                user_id,
+            )
 
 
 async def set_source_chat(
