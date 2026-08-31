@@ -1,8 +1,11 @@
+from typing import List, Optional
 import asyncpg
-from typing import Optional, List
 
-async def add_user_and_create_draft(pool: asyncpg.Pool, user_id: int, username: Optional[str]):
-    """Регистрирует юзера и создает/обновляет для него черновик связки"""
+
+async def add_user_and_create_draft(
+    pool: asyncpg.Pool, user_id: int, username: Optional[str]
+) -> None:
+    """Register a user and create a new forward draft, clearing existing unfinished drafts."""
     async with pool.acquire() as conn:
         await conn.execute(
             """
@@ -10,11 +13,9 @@ async def add_user_and_create_draft(pool: asyncpg.Pool, user_id: int, username: 
             VALUES ($1, $2) 
             ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username;
             """,
-            user_id, username
+            user_id,
+            username,
         )
-        
-        # Если у юзера уже есть висящий черновик — сбрасываем его на шаг waiting_source.
-        # Если черновика нет — создаем новый.
         await conn.execute(
             """
             DELETE FROM forwards 
@@ -22,11 +23,14 @@ async def add_user_and_create_draft(pool: asyncpg.Pool, user_id: int, username: 
             
             INSERT INTO forwards (owner_id, status) VALUES ($1, 'waiting_source');
             """,
-            user_id
+            user_id,
         )
 
-async def set_source_chat(pool: asyncpg.Pool, user_id: int, chat_id: int) -> bool:
-    """Записывает Source чат в черновик юзера"""
+
+async def set_source_chat(
+    pool: asyncpg.Pool, user_id: int, chat_id: int
+) -> bool:
+    """Set the source chat ID for a user's pending forward draft."""
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             """
@@ -35,12 +39,16 @@ async def set_source_chat(pool: asyncpg.Pool, user_id: int, chat_id: int) -> boo
             WHERE owner_id = $2 AND status = 'waiting_source'
             RETURNING id;
             """,
-            chat_id, user_id
+            chat_id,
+            user_id,
         )
         return bool(result)
 
-async def set_target_chat(pool: asyncpg.Pool, user_id: int, chat_id: int) -> bool:
-    """Записывает Target чат и активирует связку"""
+
+async def set_target_chat(
+    pool: asyncpg.Pool, user_id: int, chat_id: int
+) -> bool:
+    """Set the target chat ID for a user's pending forward draft and activate it."""
     async with pool.acquire() as conn:
         try:
             result = await conn.fetchval(
@@ -50,15 +58,18 @@ async def set_target_chat(pool: asyncpg.Pool, user_id: int, chat_id: int) -> boo
                 WHERE owner_id = $2 AND status = 'waiting_target'
                 RETURNING id;
                 """,
-                chat_id, user_id
+                chat_id,
+                user_id,
             )
             return bool(result)
         except asyncpg.UniqueViolationError:
-            # Сработает, если точно такая же связка уже есть у кого-то
             return False
 
-async def get_active_targets(pool: asyncpg.Pool, source_chat_id: int) -> List[int]:
-    """Быстрый запрос: находит все target_chat_id для входящего сообщения"""
+
+async def get_active_targets(
+    pool: asyncpg.Pool, source_chat_id: int
+) -> List[int]:
+    """Retrieve all active target chat IDs registered for a given source chat ID."""
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
@@ -66,6 +77,10 @@ async def get_active_targets(pool: asyncpg.Pool, source_chat_id: int) -> List[in
             FROM forwards 
             WHERE source_chat_id = $1 AND status = 'active';
             """,
-            source_chat_id
+            source_chat_id,
         )
-        return [r['target_chat_id'] for r in rows if r['target_chat_id'] is not None]
+        return [
+            r["target_chat_id"]
+            for r in rows
+            if r["target_chat_id"] is not None
+        ]
