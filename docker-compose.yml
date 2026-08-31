@@ -1,0 +1,13 @@
+services:
+  forwarding_bot:
+    build: .
+    container_name: forwarding_bot_container
+    restart: always
+    env_file:
+      - .env
+    networks:
+      - postgres_net
+
+networks:
+  postgres_net:
+    external: true
