@@ -39,7 +39,7 @@ my-delete-confirm = ✅ Да, удалить
 
 my-delete-cancel = ❌ Отмена
 
-my-delete-confirm-text = ⚠️ <b>Удалить пересылку #{ $fwd_id }?</b>
+my-delete-confirm_text = ⚠️ <b>Удалить пересылку #{ $fwd_id }?</b>
     Source: <code>{ $source_id }</code> → Target: <code>{ $target_id }</code>
     Действие нельзя отменить.
 

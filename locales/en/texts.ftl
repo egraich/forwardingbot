@@ -37,7 +37,7 @@ my-delete-confirm = ✅ Yes, delete
 
 my-delete-cancel = ❌ Cancel
 
-my-delete-confirm-text = ⚠️ <b>Delete forward #{ $fwd_id }?</b>
+my-delete-confirm_text = ⚠️ <b>Delete forward #{ $fwd_id }?</b>
     Source: <code>{ $source_id }</code> → Target: <code>{ $target_id }</code>
     This action cannot be undone.
 
