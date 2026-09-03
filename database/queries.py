@@ -1,5 +1,8 @@
+import logging
 from typing import List, Optional
 import asyncpg
+
+log = logging.getLogger("bot.db")
 
 
 async def add_user_and_create_draft(
@@ -10,8 +13,8 @@ async def add_user_and_create_draft(
         async with conn.transaction():
             await conn.execute(
                 """
-                INSERT INTO users (user_id, username) 
-                VALUES ($1, $2) 
+                INSERT INTO users (user_id, username)
+                VALUES ($1, $2)
                 ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username;
                 """,
                 user_id,
@@ -19,7 +22,7 @@ async def add_user_and_create_draft(
             )
             await conn.execute(
                 """
-                DELETE FROM forwards 
+                DELETE FROM forwards
                 WHERE owner_id = $1 AND status IN ('waiting_source', 'waiting_target');
                 """,
                 user_id,
@@ -30,6 +33,11 @@ async def add_user_and_create_draft(
                 """,
                 user_id,
             )
+    log.info(
+        "user registered / draft created user_id=%s username=%s",
+        user_id,
+        username,
+    )
 
 
 async def set_source_chat(
@@ -39,7 +47,7 @@ async def set_source_chat(
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             """
-            UPDATE forwards 
+            UPDATE forwards
             SET source_chat_id = $1, status = 'waiting_target'
             WHERE owner_id = $2 AND status = 'waiting_source'
             RETURNING id;
@@ -47,7 +55,20 @@ async def set_source_chat(
             chat_id,
             user_id,
         )
-        return bool(result)
+        ok = bool(result)
+        if ok:
+            log.info(
+                "set_source_chat ok user_id=%s chat_id=%s forward_id=%s",
+                user_id,
+                chat_id,
+                result,
+            )
+        else:
+            log.info(
+                "set_source_chat skipped (no draft in waiting_source) user_id=%s",
+                user_id,
+            )
+        return ok
 
 
 async def set_target_chat(
@@ -58,7 +79,7 @@ async def set_target_chat(
         try:
             result = await conn.fetchval(
                 """
-                UPDATE forwards 
+                UPDATE forwards
                 SET target_chat_id = $1, status = 'active'
                 WHERE owner_id = $2 AND status = 'waiting_target'
                 RETURNING id;
@@ -66,8 +87,26 @@ async def set_target_chat(
                 chat_id,
                 user_id,
             )
-            return bool(result)
+            ok = bool(result)
+            if ok:
+                log.info(
+                    "set_target_chat ok user_id=%s chat_id=%s forward_id=%s -> active",
+                    user_id,
+                    chat_id,
+                    result,
+                )
+            else:
+                log.info(
+                    "set_target_chat skipped (no draft in waiting_target) user_id=%s",
+                    user_id,
+                )
+            return ok
         except asyncpg.UniqueViolationError:
+            log.warning(
+                "set_target_chat duplicate (source,target) pair user_id=%s chat_id=%s",
+                user_id,
+                chat_id,
+            )
             return False
 
 
@@ -78,8 +117,8 @@ async def get_active_targets(
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT target_chat_id 
-            FROM forwards 
+            SELECT target_chat_id
+            FROM forwards
             WHERE source_chat_id = $1 AND status = 'active';
             """,
             source_chat_id,
@@ -127,4 +166,11 @@ async def delete_forward(
             owner_id,
         )
         # asyncpg returns 'DELETE N', e.g. 'DELETE 1'
-        return result == "DELETE 1"
+        ok = result == "DELETE 1"
+        log.info(
+            "delete_forward forward_id=%s owner_id=%s result=%s",
+            forward_id,
+            owner_id,
+            result,
+        )
+        return ok

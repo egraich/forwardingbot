@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
@@ -5,6 +7,7 @@ from asyncpg import Pool
 from fluentogram import TranslatorRunner
 
 router = Router()
+log = logging.getLogger("bot.private")
 
 from database.queries import (
     add_user_and_create_draft,
@@ -22,24 +25,22 @@ from keyboards.inline import (
 from keyboards.reply import get_source_keyboard, get_target_keyboard
 
 
-def _chat_link(chat_id: int) -> str | None:
-    """Build a deep-link to a chat. Returns None if a usable link cannot be built."""
-    s = str(chat_id)
-    if s.startswith("-100"):
-        return f"https://t.me/c/{s[4:]}"
-    return None
-
-
 @router.message(CommandStart(), F.chat.type == "private")
 async def cmd_start(
     message: Message, db_pool: Pool, i18n: TranslatorRunner
 ):
     """Handle /start command in private chat and initiate setup flow."""
+    user = message.from_user
+    log.info(
+        "cmd_start user_id=%s username=%s",
+        user.id if user else None,
+        user.username if user else None,
+    )
     await add_user_and_create_draft(
-        db_pool, message.from_user.id, message.from_user.username
+        db_pool, user.id, user.username
     )
     await message.answer(
-        i18n.start.welcome(name=message.from_user.first_name),
+        i18n.start.welcome(name=user.first_name),
         reply_markup=get_source_keyboard(i18n),
     )
 
@@ -50,23 +51,37 @@ async def handle_chat_shared(
 ):
     """Handle chat selection event from native request_chat buttons."""
     chat_id = message.chat_shared.chat_id
-
-    is_source_set = await set_source_chat(
-        db_pool, message.from_user.id, chat_id
+    user_id = message.from_user.id
+    log.info(
+        "chat_shared user_id=%s chat_id=%s", user_id, chat_id
     )
+
+    is_source_set = await set_source_chat(db_pool, user_id, chat_id)
     if is_source_set:
+        log.info(
+            "source set user_id=%s chat_id=%s", user_id, chat_id
+        )
         await message.answer(
             i18n.source.success(),
             reply_markup=get_target_keyboard(i18n),
         )
         return
 
-    is_target_set = await set_target_chat(
-        db_pool, message.from_user.id, chat_id
-    )
+    is_target_set = await set_target_chat(db_pool, user_id, chat_id)
     if is_target_set:
+        log.info(
+            "target set user_id=%s chat_id=%s -> forward active",
+            user_id,
+            chat_id,
+        )
         await message.answer(
             i18n.setup.complete(), reply_markup=ReplyKeyboardRemove()
+        )
+    else:
+        log.warning(
+            "chat_shared could not match source or target user_id=%s chat_id=%s",
+            user_id,
+            chat_id,
         )
 
 
@@ -75,7 +90,12 @@ async def cmd_my(
     message: Message, db_pool: Pool, i18n: TranslatorRunner
 ):
     """Show the user their active forwards as a list with delete buttons."""
-    forwards = await get_user_forwards(db_pool, message.from_user.id)
+    user_id = message.from_user.id
+    log.info("cmd_my user_id=%s", user_id)
+    forwards = await get_user_forwards(db_pool, user_id)
+    log.info(
+        "cmd_my user_id=%s forwards_count=%s", user_id, len(forwards)
+    )
 
     if not forwards:
         await message.answer(
@@ -88,13 +108,11 @@ async def cmd_my(
     for idx, fwd in enumerate(forwards, start=1):
         src = fwd["source_chat_id"]
         tgt = fwd["target_chat_id"]
-        src_link = _chat_link(src) or f"<code>{src}</code>"
-        tgt_link = _chat_link(tgt) or f"<code>{tgt}</code>"
         lines.append(
             i18n.my.item(
                 n=idx,
-                source_link=src_link,
-                target_link=tgt_link,
+                source_id=src,
+                target_id=tgt,
                 fwd_id=fwd["id"],
             )
         )
@@ -111,26 +129,38 @@ async def on_delete_request(
 ):
     """Show the delete confirmation prompt for the chosen forward."""
     forward_id = int(callback.data.split(":", 1)[1])
+    user_id = callback.from_user.id
+    log.info(
+        "del request user_id=%s forward_id=%s", user_id, forward_id
+    )
     owner_id = await get_forward_owner(db_pool, forward_id)
 
-    if owner_id is None or owner_id != callback.from_user.id:
+    if owner_id is None or owner_id != user_id:
+        log.warning(
+            "del rejected (not owner) user_id=%s forward_id=%s owner_id=%s",
+            user_id,
+            forward_id,
+            owner_id,
+        )
         await callback.answer(i18n.my.delete.not_owner(), show_alert=True)
         return
 
-    forwards = await get_user_forwards(db_pool, callback.from_user.id)
+    forwards = await get_user_forwards(db_pool, user_id)
     target_fwd = next((f for f in forwards if f["id"] == forward_id), None)
     if not target_fwd:
+        log.warning(
+            "del rejected (not found) user_id=%s forward_id=%s",
+            user_id,
+            forward_id,
+        )
         await callback.answer(i18n.my.delete.not_found(), show_alert=True)
         return
 
-    src = target_fwd["source_chat_id"]
-    tgt = target_fwd["target_chat_id"]
-    src_link = _chat_link(src) or f"<code>{src}</code>"
-    tgt_link = _chat_link(tgt) or f"<code>{tgt}</code>"
-
     await callback.message.edit_text(
         i18n.my.delete.confirm_text(
-            fwd_id=forward_id, source_link=src_link, target_link=tgt_link
+            fwd_id=forward_id,
+            source_id=target_fwd["source_chat_id"],
+            target_id=target_fwd["target_chat_id"],
         ),
         reply_markup=confirm_delete_keyboard(forward_id, i18n),
     )
@@ -143,13 +173,25 @@ async def on_delete_confirm(
 ):
     """Confirm deletion of a forward."""
     forward_id = int(callback.data.split(":", 1)[1])
-    deleted = await delete_forward(
-        db_pool, forward_id, callback.from_user.id
+    user_id = callback.from_user.id
+    log.info(
+        "confirm_del user_id=%s forward_id=%s", user_id, forward_id
     )
+    deleted = await delete_forward(db_pool, forward_id, user_id)
 
     if deleted:
+        log.info(
+            "forward deleted user_id=%s forward_id=%s",
+            user_id,
+            forward_id,
+        )
         await callback.message.edit_text(i18n.my.delete.success())
     else:
+        log.warning(
+            "confirm_del failed (row missing) user_id=%s forward_id=%s",
+            user_id,
+            forward_id,
+        )
         await callback.message.edit_text(i18n.my.delete.not_found())
     await callback.answer()
 
@@ -157,6 +199,7 @@ async def on_delete_confirm(
 @router.callback_query(F.data == "cancel_del")
 async def on_delete_cancel(callback: CallbackQuery, i18n: TranslatorRunner):
     """Cancel a pending deletion and remove the prompt."""
+    log.info("cancel_del user_id=%s", callback.from_user.id)
     await callback.answer(i18n.my.delete.cancelled())
     await callback.message.delete()
 
@@ -164,4 +207,5 @@ async def on_delete_cancel(callback: CallbackQuery, i18n: TranslatorRunner):
 @router.callback_query(F.data == "hint_start")
 async def on_hint_start(callback: CallbackQuery, i18n: TranslatorRunner):
     """Hint the user to run /start manually (callback cannot trigger a command)."""
+    log.info("hint_start user_id=%s", callback.from_user.id)
     await callback.answer(i18n.my.empty.hint(), show_alert=True)

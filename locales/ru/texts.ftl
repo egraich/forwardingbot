@@ -23,7 +23,7 @@ setup-complete = ✅ <b>Всё готово!</b>
 
 my-header = 📋 Твои пересылки ({ $count }):
 
-my-item = { $n }️⃣ Source: { $source_link } → Target: { $target_link }
+my-item = <b>{ $n }.</b> Source: <code>{ $source_id }</code> → Target: <code>{ $target_id }</code>
     <i>ID связки: <code>{ $fwd_id }</code></i>
 
 my-empty-text = 📭 У тебя пока нет пересылок.
@@ -40,7 +40,7 @@ my-delete-confirm = ✅ Да, удалить
 my-delete-cancel = ❌ Отмена
 
 my-delete-confirm-text = ⚠️ <b>Удалить пересылку #{ $fwd_id }?</b>
-    Source: { $source_link } → Target: { $target_link }
+    Source: <code>{ $source_id }</code> → Target: <code>{ $target_id }</code>
     Действие нельзя отменить.
 
 my-delete-success = ✅ Пересылка удалена.

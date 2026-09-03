@@ -21,7 +21,7 @@ setup-complete = ✅ All set!
 
 my-header = 📋 Your forwards ({ $count }):
 
-my-item = { $n }️⃣ Source: { $source_link } → Target: { $target_link }
+my-item = <b>{ $n }.</b> Source: <code>{ $source_id }</code> → Target: <code>{ $target_id }</code>
     <i>Forward ID: <code>{ $fwd_id }</code></i>
 
 my-empty-text = 📭 You have no forwards yet.
@@ -38,7 +38,7 @@ my-delete-confirm = ✅ Yes, delete
 my-delete-cancel = ❌ Cancel
 
 my-delete-confirm-text = ⚠️ <b>Delete forward #{ $fwd_id }?</b>
-    Source: { $source_link } → Target: { $target_link }
+    Source: <code>{ $source_id }</code> → Target: <code>{ $target_id }</code>
     This action cannot be undone.
 
 my-delete-success = ✅ Forward deleted.
