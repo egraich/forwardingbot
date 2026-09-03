@@ -20,3 +20,33 @@ button-target-channel = 📢 Выбрать Target-канал
 
 setup-complete = ✅ <b>Всё готово!</b> 
     Связка успешно создана. Теперь новые сообщения будут автоматически пересылаться.
+
+my-header = 📋 Твои пересылки ({ $count }):
+
+my-item = { $n }️⃣ Source: { $source_link } → Target: { $target_link }
+    <i>ID связки: <code>{ $fwd_id }</code></i>
+
+my-empty-text = 📭 У тебя пока нет пересылок.
+    Нажми /start, чтобы создать первую.
+
+my-empty-button = ➕ Создать пересылку
+
+my-empty-hint = Нажми /start вручную 🙂
+
+my-delete-button = 🗑 Удалить
+
+my-delete-confirm = ✅ Да, удалить
+
+my-delete-cancel = ❌ Отмена
+
+my-delete-confirm-text = ⚠️ <b>Удалить пересылку #{ $fwd_id }?</b>
+    Source: { $source_link } → Target: { $target_link }
+    Действие нельзя отменить.
+
+my-delete-success = ✅ Пересылка удалена.
+
+my-delete-cancelled = ❌ Отменено.
+
+my-delete-not-owner = ⛔ Это не твоя пересылка.
+
+my-delete-not-found = ⚠️ Пересылка не найдена или уже удалена.

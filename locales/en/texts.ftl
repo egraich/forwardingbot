@@ -18,3 +18,33 @@ button-target-channel = 📢 Select Target Channel
 
 setup-complete = ✅ All set! 
     Messages from the Source will now be automatically forwarded to the Target chat.
+
+my-header = 📋 Your forwards ({ $count }):
+
+my-item = { $n }️⃣ Source: { $source_link } → Target: { $target_link }
+    <i>Forward ID: <code>{ $fwd_id }</code></i>
+
+my-empty-text = 📭 You have no forwards yet.
+    Press /start to create your first one.
+
+my-empty-button = ➕ Create forward
+
+my-empty-hint = Press /start manually 🙂
+
+my-delete-button = 🗑 Delete
+
+my-delete-confirm = ✅ Yes, delete
+
+my-delete-cancel = ❌ Cancel
+
+my-delete-confirm-text = ⚠️ <b>Delete forward #{ $fwd_id }?</b>
+    Source: { $source_link } → Target: { $target_link }
+    This action cannot be undone.
+
+my-delete-success = ✅ Forward deleted.
+
+my-delete-cancelled = ❌ Cancelled.
+
+my-delete-not-owner = ⛔ This is not your forward.
+
+my-delete-not-found = ⚠️ Forward not found or already deleted.

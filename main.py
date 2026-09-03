@@ -2,6 +2,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.types import BotCommand, ScopeAllPrivateChats
 from fluent_compiler.bundle import FluentBundle
 from fluentogram import FluentTranslator, TranslatorHub
 
@@ -53,6 +54,14 @@ async def main():
 
     dp.include_router(private.router)
     dp.include_router(groups.router)
+
+    await bot.set_my_commands(
+        commands=[
+            BotCommand(command="start", description="Создать пересылку / Create forward"),
+            BotCommand(command="my", description="Мои пересылки / My forwards"),
+        ],
+        scope=ScopeAllPrivateChats(),
+    )
 
     try:
         await dp.start_polling(bot)
