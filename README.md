@@ -91,8 +91,8 @@ Environment Variables
 Create a .env file in the root directory based on .env.example:
 
 BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ
-DB_USER=egraich
-DB_PASS=228_egor_228
+DB_USER=nickname
+DB_PASS=password
 DB_NAME=forwarding_bot
 DB_HOST=nest_postgres_container
 DB_PORT=5432
